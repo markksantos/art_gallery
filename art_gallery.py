@@ -429,12 +429,318 @@ class MazeGenerator:
 
 
 # ---------------------------------------------------------------------------
+# Animation: Spirograph
+# ---------------------------------------------------------------------------
+
+class Spirograph:
+    name = "Spirograph"
+
+    def __init__(self, h, w, has256):
+        self.h, self.w, self.has256 = h, w, has256
+        self.reset()
+
+    def reset(self):
+        self.curves = []
+        self.tick = 0
+        self._new_curve_set()
+
+    def _new_curve_set(self):
+        self.curves = []
+        offsets = [0, 10, 20]
+        random.shuffle(offsets)
+        for i in range(3):
+            R = random.uniform(8, 16)
+            r = random.uniform(2, 7)
+            d = random.uniform(3, 10)
+            self.curves.append({
+                "R": R, "r": r, "d": d, "t": random.uniform(0, math.pi),
+                "color_base": offsets[i], "trail": []
+            })
+
+    def resize(self, h, w):
+        self.h, self.w = h, w
+        self.reset()
+
+    def update(self):
+        self.tick += 1
+        cx, cy = self.w / 2, self.h / 2
+        scale = min(self.h, self.w) * 0.35
+        for c in self.curves:
+            for _ in range(3):  # plot multiple points per frame
+                t = c["t"]
+                R, r, d = c["R"], c["r"], c["d"]
+                x = (R - r) * math.cos(t) + d * math.cos((R - r) / r * t)
+                y = (R - r) * math.sin(t) - d * math.sin((R - r) / r * t)
+                # normalize to [-1,1] range then scale
+                norm = R + d
+                sx = int(cx + x / norm * scale)
+                sy = int(cy + y / norm * scale * 0.5)  # aspect correction
+                c["trail"].append((sx, sy, 0))
+                c["t"] += 0.05
+            # age trail
+            c["trail"] = [(x, y, a + 1) for x, y, a in c["trail"] if a < 80]
+        if self.tick > 400:
+            self.tick = 0
+            self._new_curve_set()
+
+    def draw(self, stdscr):
+        for c in self.curves:
+            base = c["color_base"]
+            for x, y, age in c["trail"]:
+                if 0 <= y < self.h and 0 <= x < self.w:
+                    if age < 5:
+                        ch, bold = "@", True
+                    elif age < 20:
+                        ch, bold = "*", True
+                    elif age < 40:
+                        ch, bold = "+", False
+                    else:
+                        ch, bold = ".", False
+                    if self.has256:
+                        ci = 50 + (base + min(age // 3, 9)) % 30
+                        attr = curses.color_pair(ci)
+                    else:
+                        attr = curses.color_pair(1 + base % 7)
+                    if bold:
+                        attr |= curses.A_BOLD
+                    try:
+                        stdscr.addch(y, x, ch, attr)
+                    except curses.error:
+                        pass
+
+
+# ---------------------------------------------------------------------------
+# Animation: Raindrop Ripples
+# ---------------------------------------------------------------------------
+
+class RaindropRipples:
+    name = "Raindrop Ripples"
+
+    def __init__(self, h, w, has256):
+        self.h, self.w, self.has256 = h, w, has256
+        self.reset()
+
+    def reset(self):
+        self.ripples = []
+        self.tick = 0
+
+    def resize(self, h, w):
+        self.h, self.w = h, w
+
+    def update(self):
+        self.tick += 1
+        for r in self.ripples:
+            r["radius"] += 0.8
+            r["age"] += 1
+        self.ripples = [r for r in self.ripples if r["radius"] < r["max_radius"]]
+        if random.random() < 0.1 and len(self.ripples) < 10:
+            self.ripples.append({
+                "cx": random.uniform(0, self.w),
+                "cy": random.uniform(0, self.h),
+                "radius": 0.0,
+                "max_radius": random.uniform(min(self.h, self.w) * 0.5,
+                                             max(self.h, self.w) * 1.2),
+                "age": 0,
+            })
+
+    GRADIENT = " .:-=+*#%@"
+
+    def draw(self, stdscr):
+        for y in range(self.h):
+            for x in range(self.w):
+                intensity = 0.0
+                for r in self.ripples:
+                    dx = x - r["cx"]
+                    dy = (y - r["cy"]) * 2  # aspect correction
+                    dist = math.sqrt(dx * dx + dy * dy)
+                    ring = max(0.0, 1.0 - abs(dist - r["radius"]) / 2.5)
+                    fade = max(0.0, 1.0 - r["radius"] / r["max_radius"])
+                    intensity += ring * fade
+                if intensity > 0.05:
+                    intensity = min(intensity, 1.0)
+                    ci = int(intensity * (len(self.GRADIENT) - 1))
+                    ch = self.GRADIENT[clamp(ci, 0, len(self.GRADIENT) - 1)]
+                    if self.has256:
+                        # map intensity to cool blue/cyan colors
+                        pair = 50 + 15 + int((1.0 - intensity) * 14)
+                        attr = curses.color_pair(clamp(pair, 50, 79))
+                    else:
+                        attr = curses.color_pair(6) if intensity < 0.5 else curses.color_pair(7)
+                    if intensity > 0.7:
+                        attr |= curses.A_BOLD
+                    try:
+                        stdscr.addch(y, x, ch, attr)
+                    except curses.error:
+                        pass
+
+
+# ---------------------------------------------------------------------------
+# Animation: Lissajous Weaver
+# ---------------------------------------------------------------------------
+
+class LissajousWeaver:
+    name = "Lissajous Weaver"
+
+    def __init__(self, h, w, has256):
+        self.h, self.w, self.has256 = h, w, has256
+        self.reset()
+
+    def reset(self):
+        self.phosphor = [[0.0] * self.w for _ in range(self.h)]
+        self.beams = []
+        ratios = [(3, 2), (5, 4), (3, 4), (7, 6)]
+        for i, (a, b) in enumerate(ratios):
+            self.beams.append({
+                "a": a, "b": b, "t": 0.0,
+                "delta": random.uniform(0, 2 * math.pi),
+                "delta_drift": random.uniform(0.001, 0.004),
+            })
+        self.tick = 0
+
+    def resize(self, h, w):
+        self.h, self.w = h, w
+        self.reset()
+
+    def update(self):
+        self.tick += 1
+        # decay phosphor
+        for y in range(self.h):
+            for x in range(self.w):
+                self.phosphor[y][x] *= 0.93
+        cx, cy = self.w / 2, self.h / 2
+        sx, sy = self.w * 0.42, self.h * 0.42
+        for beam in self.beams:
+            beam["t"] += 0.04
+            beam["delta"] += beam["delta_drift"]
+            px = math.sin(beam["a"] * beam["t"] + beam["delta"]) * sx + cx
+            py = math.sin(beam["b"] * beam["t"]) * sy + cy
+            ix, iy = int(px), int(py)
+            # plot with glow
+            for dy in range(-1, 2):
+                for dx in range(-1, 2):
+                    ny, nx = iy + dy, ix + dx
+                    if 0 <= ny < self.h and 0 <= nx < self.w:
+                        v = 1.0 if dx == 0 and dy == 0 else 0.5
+                        self.phosphor[ny][nx] = min(1.0, self.phosphor[ny][nx] + v)
+        if self.tick > 600:
+            self.tick = 0
+            ratios = [(3, 2), (5, 4), (3, 4), (7, 6), (5, 3), (4, 3)]
+            random.shuffle(ratios)
+            for i, beam in enumerate(self.beams):
+                beam["a"], beam["b"] = ratios[i]
+                beam["delta"] = random.uniform(0, 2 * math.pi)
+
+    def draw(self, stdscr):
+        for y in range(self.h):
+            for x in range(self.w):
+                v = self.phosphor[y][x]
+                if v > 0.05:
+                    if v > 0.8:
+                        ch = "\u2588"
+                    elif v > 0.5:
+                        ch = "#"
+                    elif v > 0.3:
+                        ch = "*"
+                    elif v > 0.15:
+                        ch = "+"
+                    else:
+                        ch = "."
+                    if self.has256:
+                        shade = clamp(int(v * 9), 0, 9)
+                        attr = curses.color_pair(10 + shade)
+                    else:
+                        attr = curses.color_pair(2)
+                    if v > 0.6:
+                        attr |= curses.A_BOLD
+                    try:
+                        stdscr.addch(y, x, ch, attr)
+                    except curses.error:
+                        pass
+
+
+# ---------------------------------------------------------------------------
+# Animation: Voronoi Landscape
+# ---------------------------------------------------------------------------
+
+class VoronoiLandscape:
+    name = "Voronoi Landscape"
+
+    def __init__(self, h, w, has256):
+        self.h, self.w, self.has256 = h, w, has256
+        self.reset()
+
+    def reset(self):
+        self.seeds = []
+        n = random.randint(12, 16)
+        for i in range(n):
+            self.seeds.append({
+                "x": random.uniform(0, self.w),
+                "y": random.uniform(0, self.h),
+                "vx": random.uniform(-0.3, 0.3),
+                "vy": random.uniform(-0.3, 0.3),
+                "color": i % 30,
+            })
+
+    def resize(self, h, w):
+        self.h, self.w = h, w
+        self.reset()
+
+    def update(self):
+        for s in self.seeds:
+            s["x"] += s["vx"]
+            s["y"] += s["vy"]
+            if s["x"] < 0 or s["x"] >= self.w:
+                s["vx"] = -s["vx"]
+                s["x"] = clamp(s["x"], 0, self.w - 1)
+            if s["y"] < 0 or s["y"] >= self.h:
+                s["vy"] = -s["vy"]
+                s["y"] = clamp(s["y"], 0, self.h - 1)
+            # slight random drift
+            s["vx"] += random.uniform(-0.02, 0.02)
+            s["vy"] += random.uniform(-0.02, 0.02)
+            s["vx"] = clamp(s["vx"], -0.5, 0.5)
+            s["vy"] = clamp(s["vy"], -0.5, 0.5)
+
+    def draw(self, stdscr):
+        step = 2 if self.w > 150 else 1
+        for y in range(0, self.h, step):
+            for x in range(0, self.w, step):
+                d1, d2 = 1e9, 1e9
+                nearest = 0
+                for i, s in enumerate(self.seeds):
+                    dx = x - s["x"]
+                    dy = (y - s["y"]) * 2  # aspect correction
+                    d = dx * dx + dy * dy
+                    if d < d1:
+                        d2, d1, nearest = d1, d, i
+                    elif d < d2:
+                        d2 = d
+                edge = math.sqrt(d2) - math.sqrt(d1) if d1 < 1e8 else 999
+                if edge < 1.2:
+                    attr = curses.color_pair(7) | curses.A_BOLD
+                    ch = "\u00b7"
+                else:
+                    ci = self.seeds[nearest]["color"]
+                    if self.has256:
+                        attr = curses.color_pair(50 + ci)
+                    else:
+                        attr = curses.color_pair(1 + ci % 7)
+                    ch = "\u2588"
+                try:
+                    stdscr.addch(y, x, ch, attr)
+                    if step == 2 and x + 1 < self.w:
+                        stdscr.addch(y, x + 1, ch, attr)
+                except curses.error:
+                    pass
+
+
+# ---------------------------------------------------------------------------
 # Main loop
 # ---------------------------------------------------------------------------
 
 def draw_status_bar(stdscr, h, w, anim_name, idx, total, paused):
     bar = f" [{idx+1}/{total}] {anim_name}"
-    controls = " \u2190/\u2192:switch  1-6:jump  Space:pause  r:reset  q:quit "
+    controls = " \u2190/\u2192:switch  1-0:jump  Space:pause  r:reset  q:quit "
     if paused:
         bar += "  [PAUSED]"
     pad = w - len(bar) - len(controls)
@@ -466,6 +772,10 @@ def main(stdscr):
         GameOfLife(ah, w, has256),
         PlasmaWaves(ah, w, has256),
         MazeGenerator(ah, w, has256),
+        Spirograph(ah, w, has256),
+        RaindropRipples(ah, w, has256),
+        LissajousWeaver(ah, w, has256),
+        VoronoiLandscape(ah, w, has256),
     ]
     current = 0
     paused = False
@@ -478,8 +788,10 @@ def main(stdscr):
             current = (current + 1) % len(animations)
         elif key == curses.KEY_LEFT:
             current = (current - 1) % len(animations)
-        elif ord("1") <= key <= ord("6"):
+        elif ord("1") <= key <= ord("9"):
             current = key - ord("1")
+        elif key == ord("0"):
+            current = 9
         elif key == ord(" "):
             paused = not paused
         elif key == ord("r"):

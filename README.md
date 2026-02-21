@@ -2,7 +2,7 @@
 
 # 🎨 Art Gallery
 
-**Interactive terminal art gallery with 6 generative art animations — pure Python, zero dependencies**
+**Interactive terminal art gallery with 10 generative art animations — pure Python, zero dependencies**
 
 [![Python](https://img.shields.io/badge/Python-3.6+-3776AB?style=for-the-badge&logo=python&logoColor=white)](#)
 [![Curses](https://img.shields.io/badge/Curses-stdlib-4B8BBE?style=for-the-badge&logo=python&logoColor=white)](#)
@@ -24,6 +24,14 @@
 |:-:|:-:|:-:|
 | ![Game of Life](screenshots/game_of_life.png) | ![Plasma Waves](screenshots/plasma_waves.png) | ![Maze Generator](screenshots/maze_generator.png) |
 
+| Spirograph | Raindrop Ripples | Lissajous Weaver |
+|:-:|:-:|:-:|
+| ![Spirograph](screenshots/spirograph.png) | ![Raindrop Ripples](screenshots/raindrop_ripples.png) | ![Lissajous Weaver](screenshots/lissajous_weaver.png) |
+
+| Voronoi Landscape | | |
+|:-:|:-:|:-:|
+| ![Voronoi Landscape](screenshots/voronoi_landscape.png) | | |
+
 ## ✨ Features
 
 - **Matrix Rain** — Cascading green characters inspired by The Matrix
@@ -32,6 +40,10 @@
 - **Game of Life** — Conway's cellular automaton with color-coded cell age
 - **Plasma Waves** — Smooth undulating rainbow gradient effects
 - **Maze Generator** — Real-time recursive backtracking maze carving
+- **Spirograph** — Hypotrochoid curves tracing intricate geometric patterns
+- **Raindrop Ripples** — Concentric expanding rings with interference patterns
+- **Lissajous Weaver** — Oscilloscope-style phosphor trails from parametric curves
+- **Voronoi Landscape** — Dynamic stained-glass mosaic with drifting seed points
 - **Keyboard Navigation** — Switch between exhibits with arrow keys or number keys, pause/resume, and reset
 
 ## 🚀 Getting Started
@@ -53,7 +65,7 @@ python3 art_gallery.py
 | Key | Action |
 |-----|--------|
 | `Left` / `Right` | Switch between animations |
-| `1`–`6` | Jump to a specific animation |
+| `1`–`9`, `0` | Jump to a specific animation (0 = 10th) |
 | `Space` | Pause / Resume |
 | `r` | Reset current animation |
 | `q` | Quit |
@@ -70,7 +82,7 @@ python3 art_gallery.py
 
 ```
 art_gallery/
-├── art_gallery.py          # All 6 animations + gallery navigation
+├── art_gallery.py          # All 10 animations + gallery navigation
 ├── screenshots/            # Generated animation screenshots
 └── README.md
 ```
