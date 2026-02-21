@@ -8,11 +8,21 @@
 [![Curses](https://img.shields.io/badge/Curses-stdlib-4B8BBE?style=for-the-badge&logo=python&logoColor=white)](#)
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](#)
 
-[Features](#-features) · [Getting Started](#-getting-started) · [Tech Stack](#️-tech-stack)
+[Features](#-features) · [Screenshots](#-screenshots) · [Getting Started](#-getting-started) · [Tech Stack](#️-tech-stack)
 
 </div>
 
 ---
+
+## 📸 Screenshots
+
+| Matrix Rain | Starfield | Fireworks |
+|:-:|:-:|:-:|
+| ![Matrix Rain](screenshots/matrix_rain.png) | ![Starfield](screenshots/starfield.png) | ![Fireworks](screenshots/fireworks.png) |
+
+| Game of Life | Plasma Waves | Maze Generator |
+|:-:|:-:|:-:|
+| ![Game of Life](screenshots/game_of_life.png) | ![Plasma Waves](screenshots/plasma_waves.png) | ![Maze Generator](screenshots/maze_generator.png) |
 
 ## ✨ Features
 
@@ -61,6 +71,7 @@ python3 art_gallery.py
 ```
 art_gallery/
 ├── art_gallery.py          # All 6 animations + gallery navigation
+├── screenshots/            # Generated animation screenshots
 └── README.md
 ```
 
