@@ -735,6 +735,198 @@ class VoronoiLandscape:
 
 
 # ---------------------------------------------------------------------------
+# Animation: Fluid Particles (Boids)
+# ---------------------------------------------------------------------------
+
+class FluidParticles:
+    name = "Fluid Particles"
+
+    def __init__(self, h, w, has256):
+        self.h, self.w, self.has256 = h, w, has256
+        self.reset()
+
+    def reset(self):
+        self.boids = []
+        for _ in range(80):
+            self.boids.append({
+                "x": random.uniform(0, self.w),
+                "y": random.uniform(0, self.h),
+                "vx": random.uniform(-1, 1),
+                "vy": random.uniform(-0.5, 0.5),
+            })
+        self.trail = [[0.0] * self.w for _ in range(self.h)]
+
+    def resize(self, h, w):
+        self.h, self.w = h, w
+        self.reset()
+
+    def update(self):
+        # decay trails
+        for y in range(self.h):
+            for x in range(self.w):
+                self.trail[y][x] *= 0.88
+
+        for b in self.boids:
+            # flocking: steer toward center, match velocity, avoid crowding
+            cx, cy, cvx, cvy, sep_x, sep_y, count = 0, 0, 0, 0, 0, 0, 0
+            for o in self.boids:
+                if o is b:
+                    continue
+                dx = o["x"] - b["x"]
+                dy = o["y"] - b["y"]
+                d = math.sqrt(dx * dx + dy * dy) + 0.01
+                if d < 20:
+                    cx += o["x"]
+                    cy += o["y"]
+                    cvx += o["vx"]
+                    cvy += o["vy"]
+                    count += 1
+                    if d < 4:
+                        sep_x -= dx / d
+                        sep_y -= dy / d
+            if count > 0:
+                # cohesion
+                b["vx"] += (cx / count - b["x"]) * 0.005
+                b["vy"] += (cy / count - b["y"]) * 0.005
+                # alignment
+                b["vx"] += (cvx / count - b["vx"]) * 0.05
+                b["vy"] += (cvy / count - b["vy"]) * 0.05
+            # separation
+            b["vx"] += sep_x * 0.15
+            b["vy"] += sep_y * 0.15
+            # speed limit
+            spd = math.sqrt(b["vx"] ** 2 + b["vy"] ** 2) + 0.01
+            if spd > 1.5:
+                b["vx"] = b["vx"] / spd * 1.5
+                b["vy"] = b["vy"] / spd * 1.5
+            b["x"] += b["vx"]
+            b["y"] += b["vy"]
+            # wrap
+            b["x"] %= self.w
+            b["y"] %= self.h
+            # deposit trail
+            iy, ix = int(b["y"]), int(b["x"])
+            if 0 <= iy < self.h and 0 <= ix < self.w:
+                self.trail[iy][ix] = min(1.0, self.trail[iy][ix] + 0.6)
+
+    def draw(self, stdscr):
+        # draw trails
+        for y in range(self.h):
+            for x in range(self.w):
+                v = self.trail[y][x]
+                if v > 0.05:
+                    if v > 0.7:
+                        ch = "\u2588"
+                    elif v > 0.4:
+                        ch = "#"
+                    elif v > 0.2:
+                        ch = "+"
+                    else:
+                        ch = "."
+                    if self.has256:
+                        ci = 50 + int(v * 20)
+                        attr = curses.color_pair(clamp(ci, 50, 79))
+                    else:
+                        attr = curses.color_pair(6)
+                    if v > 0.5:
+                        attr |= curses.A_BOLD
+                    try:
+                        stdscr.addch(y, x, ch, attr)
+                    except curses.error:
+                        pass
+        # draw boid heads
+        for b in self.boids:
+            iy, ix = int(b["y"]), int(b["x"])
+            if 0 <= iy < self.h and 0 <= ix < self.w:
+                try:
+                    stdscr.addch(iy, ix, "\u2588",
+                                 curses.color_pair(7) | curses.A_BOLD)
+                except curses.error:
+                    pass
+
+
+# ---------------------------------------------------------------------------
+# Animation: Terrain Map
+# ---------------------------------------------------------------------------
+
+class TerrainMap:
+    name = "Terrain Map"
+    GRADIENT = " .:-=+*#%@"
+    # water, sand, grass, forest, mountain, snow
+    COLORS_256 = [21, 33, 51, 46, 34, 22, 100, 136, 94, 255]
+    COLORS_BASIC = [4, 3, 2, 2, 3, 7]
+
+    def __init__(self, h, w, has256):
+        self.h, self.w, self.has256 = h, w, has256
+        self.reset()
+
+    def reset(self):
+        self.t = 0.0
+        self._generate_terrain()
+
+    def _generate_terrain(self):
+        # multi-octave value noise via sine sums (no imports needed)
+        self.heightmap = [[0.0] * self.w for _ in range(self.h)]
+        ox = random.uniform(0, 1000)
+        oy = random.uniform(0, 1000)
+        for y in range(self.h):
+            for x in range(self.w):
+                v = 0.0
+                v += math.sin((x + ox) * 0.05 + self.t) * math.cos((y + oy) * 0.07 + self.t * 0.3)
+                v += 0.5 * math.sin((x + ox) * 0.11 + (y + oy) * 0.09 + self.t * 0.5)
+                v += 0.25 * math.sin((x + ox) * 0.23 + self.t * 0.7) * math.sin((y + oy) * 0.19)
+                self.heightmap[y][x] = (v + 1.75) / 3.5  # normalize roughly to [0,1]
+
+    def resize(self, h, w):
+        self.h, self.w = h, w
+        self.reset()
+
+    def update(self):
+        self.t += 0.03
+        self._generate_terrain()
+
+    def draw(self, stdscr):
+        for y in range(self.h):
+            for x in range(self.w):
+                h = clamp(self.heightmap[y][x], 0.0, 1.0)
+                ci = int(h * (len(self.GRADIENT) - 1))
+                ch = self.GRADIENT[ci]
+                if self.has256:
+                    # map height to terrain color
+                    if h < 0.3:
+                        pair = 50 + 19  # deep blue
+                    elif h < 0.38:
+                        pair = 50 + 17  # shallow blue
+                    elif h < 0.42:
+                        pair = 50 + 3   # sand/yellow
+                    elif h < 0.6:
+                        pair = 50 + 8   # green
+                    elif h < 0.75:
+                        pair = 50 + 10  # darker green
+                    elif h < 0.85:
+                        pair = 50 + 5   # yellow-brown
+                    else:
+                        pair = 50 + 0   # snow/peak (bright red-white)
+                        ch = "^"
+                    attr = curses.color_pair(pair)
+                else:
+                    if h < 0.35:
+                        attr = curses.color_pair(4)
+                    elif h < 0.5:
+                        attr = curses.color_pair(2)
+                    elif h < 0.75:
+                        attr = curses.color_pair(3)
+                    else:
+                        attr = curses.color_pair(7)
+                if h > 0.7:
+                    attr |= curses.A_BOLD
+                try:
+                    stdscr.addch(y, x, ch, attr)
+                except curses.error:
+                    pass
+
+
+# ---------------------------------------------------------------------------
 # Main loop
 # ---------------------------------------------------------------------------
 
@@ -776,6 +968,8 @@ def main(stdscr):
         RaindropRipples(ah, w, has256),
         LissajousWeaver(ah, w, has256),
         VoronoiLandscape(ah, w, has256),
+        FluidParticles(ah, w, has256),
+        TerrainMap(ah, w, has256),
     ]
     current = 0
     paused = False

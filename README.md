@@ -2,7 +2,7 @@
 
 # 🎨 Art Gallery
 
-**Interactive terminal art gallery with 10 generative art animations — pure Python, zero dependencies**
+**Interactive terminal art gallery with 12 generative art animations — pure Python, zero dependencies**
 
 [![Python](https://img.shields.io/badge/Python-3.6+-3776AB?style=for-the-badge&logo=python&logoColor=white)](#)
 [![Curses](https://img.shields.io/badge/Curses-stdlib-4B8BBE?style=for-the-badge&logo=python&logoColor=white)](#)
@@ -28,9 +28,9 @@
 |:-:|:-:|:-:|
 | ![Spirograph](screenshots/spirograph.png) | ![Raindrop Ripples](screenshots/raindrop_ripples.png) | ![Lissajous Weaver](screenshots/lissajous_weaver.png) |
 
-| Voronoi Landscape | | |
+| Voronoi Landscape | Fluid Particles | Terrain Map |
 |:-:|:-:|:-:|
-| ![Voronoi Landscape](screenshots/voronoi_landscape.png) | | |
+| ![Voronoi Landscape](screenshots/voronoi_landscape.png) | ![Fluid Particles](screenshots/fluid_particles.png) | ![Terrain Map](screenshots/terrain_map.png) |
 
 ## ✨ Features
 
@@ -44,6 +44,8 @@
 - **Raindrop Ripples** — Concentric expanding rings with interference patterns
 - **Lissajous Weaver** — Oscilloscope-style phosphor trails from parametric curves
 - **Voronoi Landscape** — Dynamic stained-glass mosaic with drifting seed points
+- **Fluid Particles** — Boids flocking simulation with rainbow trails
+- **Terrain Map** — Animated topographic heightmap with terrain coloring
 - **Keyboard Navigation** — Switch between exhibits with arrow keys or number keys, pause/resume, and reset
 
 ## 🚀 Getting Started
@@ -82,7 +84,7 @@ python3 art_gallery.py
 
 ```
 art_gallery/
-├── art_gallery.py          # All 10 animations + gallery navigation
+├── art_gallery.py          # All 12 animations + gallery navigation
 ├── screenshots/            # Generated animation screenshots
 └── README.md
 ```
